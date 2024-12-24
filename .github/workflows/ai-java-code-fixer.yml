@@ -1,4 +1,4 @@
-name: Fix Java Compilation Issues with GitHub Copilot
+name: Fix Java Compilation Issues with GitHub Copilot CLI
 on:
   push:
     branches:
@@ -16,7 +16,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '18'
+          node-version: '16'
 
       - name: Set up JDK 11
         uses: actions/setup-java@v2
@@ -24,39 +24,24 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
       
-      - name: Install and Configure Copilot CLI
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
+      - name: Install GitHub Copilot CLI
         run: |
-          # Install the official Copilot CLI
-          npm install -g @github/copilot-cli
-          
-          # Create necessary directories
-          mkdir -p ~/.config/gh-copilot
-          
-          # Store authentication
-          echo "$COPILOT_TOKEN" > ~/.config/gh-copilot/token
-          
-          # Install gh extension for Copilot
-          gh extension install github/gh-copilot
-          
-          # Verify installation
-          gh copilot --version || echo "Copilot CLI installation failed"
+          npm install -g @githubnext/github-copilot-cli
+          gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
           
       - name: Fix Code with Copilot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
         run: |
-          # Use gh copilot to suggest fixes
-          gh copilot suggest "Fix the Java compilation errors in src/Main.java" > suggested_fix.txt
+          # Use Copilot CLI to fix the code
+          github-copilot fix src/Main.java --output-file src/Main.java.fixed
           
-          # Apply the suggested fix if available
-          if [ -s suggested_fix.txt ]; then
-            cat suggested_fix.txt > src/Main.java
+          # If fix was successful, replace original file
+          if [ -f "src/Main.java.fixed" ]; then
+            mv src/Main.java.fixed src/Main.java
           else
-            echo "No fixes suggested by Copilot"
+            echo "Copilot fix failed to generate output"
             exit 1
           fi
       
