@@ -46,7 +46,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Use gh copilot to suggest fixes
-          gh copilot suggest -C src/Main.java "Fix the Java compilation errors in src/Main.java" > suggested_fix.txt
+          gh copilot suggest "Fix the Java compilation errors in src/Main.java" > suggested_fix.txt
       
           # Apply the suggested fix if available
           if [ -s suggested_fix.txt ]; then
@@ -55,6 +55,7 @@ jobs:
             echo "No fixes suggested by Copilot"
             exit 1
           fi
+
     
       - name: Verify Fixed Code
         run: |
