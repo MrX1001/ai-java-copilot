@@ -24,30 +24,23 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
       
-      - name: Install and Configure GitHub CLI
+      - name: Authenticate GitHub CLI
         run: |
-          # Install GitHub CLI
-          sudo apt-get update
-          sudo apt-get install -y gh
-          
-          # Authenticate GitHub CLI
           echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-            
+          gh auth status
+
       - name: Install Copilot CLI as GitHub CLI Extension
         run: |
-          # Install Copilot CLI as a GitHub CLI extension
           gh extension install github/gh-copilot
-          
-          # Verify installation
           gh copilot --help || echo "Copilot CLI installation failed"
-            
+      
       - name: Fix Code with Copilot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Use gh copilot to suggest fixes
           gh copilot suggest "Fix the Java compilation errors in src/Main.java" > suggested_fix.txt
-      
+
           # Apply the suggested fix if available
           if [ -s suggested_fix.txt ]; then
             cat suggested_fix.txt > src/Main.java
@@ -55,8 +48,7 @@ jobs:
             echo "No fixes suggested by Copilot"
             exit 1
           fi
-
-    
+      
       - name: Verify Fixed Code
         run: |
           # Attempt to compile the fixed code
