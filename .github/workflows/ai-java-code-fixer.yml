@@ -40,14 +40,14 @@ jobs:
           
           # Verify installation
           gh copilot --help || echo "Copilot CLI installation failed"
-      
+            
       - name: Fix Code with Copilot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Use gh copilot to suggest fixes
-          gh copilot-cli suggest "Fix the Java compilation errors in src/Main.java" > suggested_fix.txt
-          
+          gh copilot suggest -C src/Main.java "Fix the Java compilation errors in src/Main.java" > suggested_fix.txt
+      
           # Apply the suggested fix if available
           if [ -s suggested_fix.txt ]; then
             cat suggested_fix.txt > src/Main.java
@@ -55,7 +55,7 @@ jobs:
             echo "No fixes suggested by Copilot"
             exit 1
           fi
-      
+    
       - name: Verify Fixed Code
         run: |
           # Attempt to compile the fixed code
