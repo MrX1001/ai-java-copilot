@@ -16,7 +16,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '16'
+          node-version: '18'
 
       - name: Set up JDK 11
         uses: actions/setup-java@v2
@@ -25,17 +25,38 @@ jobs:
           distribution: 'temurin'
       
       - name: Install GitHub Copilot CLI
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
         run: |
-          npm install -g @githubnext/github-copilot-cli
-          gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
+          # Install Copilot CLI globally
+          sudo npm install -g @githubnext/github-copilot-cli
+          
+          # Configure Copilot CLI
+          echo "$COPILOT_TOKEN" > ~/.copilot-token
+          
+          # Verify installation
+          which github-copilot || echo "Copilot CLI not found in PATH"
+          echo "PATH=$PATH"
+          
+          # Create config directory if it doesn't exist
+          mkdir -p ~/.config/github-copilot
+          
+          # Store authentication
+          echo "{\"token\":\"$COPILOT_TOKEN\"}" > ~/.config/github-copilot/hosts.json
           
       - name: Fix Code with Copilot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
         run: |
-          # Use Copilot CLI to fix the code
-          github-copilot fix src/Main.java --output-file src/Main.java.fixed
+          # Full path to the CLI executable
+          COPILOT_CLI=$(which github-copilot)
+          
+          echo "Using Copilot CLI at: $COPILOT_CLI"
+          
+          # Use Copilot CLI with full path
+          "$COPILOT_CLI" fix "$(pwd)/src/Main.java" --output-file "$(pwd)/src/Main.java.fixed"
           
           # If fix was successful, replace original file
           if [ -f "src/Main.java.fixed" ]; then
