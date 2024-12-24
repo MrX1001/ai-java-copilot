@@ -32,15 +32,15 @@ jobs:
           
           # Authenticate GitHub CLI
           echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-      
+            
       - name: Install Copilot CLI as GitHub CLI Extension
         run: |
           # Install Copilot CLI as a GitHub CLI extension
-          gh extension install github/copilot-cli
+          gh extension install github/gh-copilot
           
           # Verify installation
-          gh copilot-cli --help || echo "Copilot CLI installation failed"
-          
+          gh copilot --help || echo "Copilot CLI installation failed"
+      
       - name: Fix Code with Copilot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
