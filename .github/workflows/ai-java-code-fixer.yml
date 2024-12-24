@@ -1,4 +1,4 @@
-name: Fix Java Compilation Issues with GitHub Copilot CLI
+name: Fix Java Compilation Issues with GitHub Copilot
 on:
   push:
     branches:
@@ -24,45 +24,39 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
       
-      - name: Install GitHub Copilot CLI
+      - name: Install and Configure Copilot CLI
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
         run: |
-          # Install Copilot CLI globally
-          sudo npm install -g @githubnext/github-copilot-cli
+          # Install the official Copilot CLI
+          npm install -g @github/copilot-cli
           
-          # Configure Copilot CLI
-          echo "$COPILOT_TOKEN" > ~/.copilot-token
-          
-          # Verify installation
-          which github-copilot || echo "Copilot CLI not found in PATH"
-          echo "PATH=$PATH"
-          
-          # Create config directory if it doesn't exist
-          mkdir -p ~/.config/github-copilot
+          # Create necessary directories
+          mkdir -p ~/.config/gh-copilot
           
           # Store authentication
-          echo "{\"token\":\"$COPILOT_TOKEN\"}" > ~/.config/github-copilot/hosts.json
+          echo "$COPILOT_TOKEN" > ~/.config/gh-copilot/token
+          
+          # Install gh extension for Copilot
+          gh extension install github/gh-copilot
+          
+          # Verify installation
+          gh copilot --version || echo "Copilot CLI installation failed"
           
       - name: Fix Code with Copilot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
         run: |
-          # Full path to the CLI executable
-          COPILOT_CLI=$(which github-copilot)
+          # Use gh copilot to suggest fixes
+          gh copilot suggest "Fix the Java compilation errors in src/Main.java" > suggested_fix.txt
           
-          echo "Using Copilot CLI at: $COPILOT_CLI"
-          
-          # Use Copilot CLI with full path
-          "$COPILOT_CLI" fix "$(pwd)/src/Main.java" --output-file "$(pwd)/src/Main.java.fixed"
-          
-          # If fix was successful, replace original file
-          if [ -f "src/Main.java.fixed" ]; then
-            mv src/Main.java.fixed src/Main.java
+          # Apply the suggested fix if available
+          if [ -s suggested_fix.txt ]; then
+            cat suggested_fix.txt > src/Main.java
           else
-            echo "Copilot fix failed to generate output"
+            echo "No fixes suggested by Copilot"
             exit 1
           fi
       
