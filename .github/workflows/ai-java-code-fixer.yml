@@ -1,0 +1,87 @@
+name: Fix Java Compilation Issues with GitHub Copilot
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  fix-java-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      - name: Set up JDK 11
+        uses: actions/setup-java@v2
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+      
+      - name: Prepare Copilot Request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
+        run: |
+          # Read the source code and properly escape it for JSON
+          SOURCE_CODE=$(cat src/Main.java | jq -Rs .)
+          
+          # Create the JSON payload file using jq
+          jq -n --arg code "$SOURCE_CODE" '{
+            "prompt": "Fix the compilation errors in this Java code and respond with ONLY the corrected code:\n\n\($code)",
+            "temperature": 0.5,
+            "maxTokens": 300,
+            "topP": 1,
+            "n": 1,
+            "stop": ["```"]
+          }' > request.json
+
+          # Send request to GitHub Copilot API
+          response=$(curl -sS \
+            --max-time 30 \
+            -X POST https://api.githubcopilot.com/completions \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $COPILOT_TOKEN" \
+            -H "OpenAI-Organization: github-copilot" \
+            -d @request.json \
+            --write-out '\n%{http_code}' \
+            -o response.json)
+
+          # Extract HTTP status code
+          http_code=$(echo "$response" | tail -n1)
+          
+          # Check if request was successful
+          if [ "$http_code" -ne 200 ]; then
+            echo "Error: HTTP status code $http_code"
+            cat response.json
+            exit 1
+          fi
+      
+      - name: Process Copilot Response
+        run: |
+          # Extract only the code content
+          jq -r '.choices[0].text' response.json > src/Main.java
+          
+          # Verify the file starts with 'public class'
+          if ! grep -q "^public class" src/Main.java; then
+            echo "Error: Invalid Java file format"
+            cat src/Main.java
+            exit 1
+          fi
+      
+      - name: Verify Fixed Code
+        run: |
+          # Attempt to compile the fixed code
+          if ! javac src/Main.java; then
+            echo "Compilation failed after Copilot fix"
+            exit 1
+          fi
+      
+      - name: Commit Changes
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add .
+          git commit -m "Fix Java compilation issues using GitHub Copilot"
+          git push
