@@ -104,20 +104,20 @@ jobs:
           echo "Current directory: $(pwd)"
           
           # Use gh copilot to suggest fixes
-          gh copilot suggest "Fix the Java compilation errors in workspace/src/Main.java" > suggested_fix.txt          
+          gh copilot explain "ssh localhost"       
                     
           # Debug the output
-          echo "Suggested fix contents:"
-          cat suggested_fix.txt || echo "No suggestions received."
+          # echo "Suggested fix contents:"
+          # cat suggested_fix.txt || echo "No suggestions received."
           
           # Apply the suggested fix if available
-          if [ -s suggested_fix.txt ]; then
-            echo "Applying Copilot suggestion..."
-            cp suggested_fix.txt Main.java
-          else
-            echo "No fixes suggested by Copilot. Exiting."
-            exit 1
-          fi
+          # if [ -s suggested_fix.txt ]; then
+          #  echo "Applying Copilot suggestion..."
+          #  cp suggested_fix.txt Main.java
+          # else
+          #  echo "No fixes suggested by Copilot. Exiting."
+          #  exit 1
+          # fi
     
       - name: Verify Fixed Code        
         run: |
