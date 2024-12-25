@@ -65,8 +65,9 @@ jobs:
             if ! javac "$file" 2>/dev/null; then
               echo "Compilation failed for $file. Attempting to fix..."
               
-              # Get Copilot suggestions
-              FIXED_CODE=$(gh copilot suggest "Fix this Java code to compile correctly: $(cat "$file")" --timeout 30s)
+              # Get Copilot suggestions using the correct syntax
+              echo "Getting Copilot suggestions for $file..."
+              FIXED_CODE=$(cat "$file" | gh copilot suggest -t "Fix this Java code to compile correctly")
               
               if [ ! -z "$FIXED_CODE" ]; then
                 echo "$FIXED_CODE" > "$file"
