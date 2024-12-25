@@ -58,16 +58,33 @@ jobs:
       
       - name: Check and Fix Java Code
         run: |
-          # Find all Java files
-          find . -name "*.java" -type f | while read -r file; do
-            echo "Checking file: $file"
+          # Create src directory if it doesn't exist
+          mkdir -p src
+          cd src
+          
+          if [ ! -f "Main.java" ]; then
+            echo "Main.java not found in src directory"
+            exit 1
+          fi
+          
+          echo "Checking Main.java..."
+          if ! javac Main.java 2>/dev/null; then
+            echo "Compilation failed. Attempting to fix..."
+            echo "Getting Copilot suggestions..."
             
-            if ! javac "$file" 2>/dev/null; then
-              echo "Compilation failed for $file. Attempting to fix..."
-              
-              # Get Copilot suggestions using the correct syntax
-              echo "Getting Copilot suggestions for $file..."
-              FIXED_CODE=$(gh copilot suggest --target shell --comment "Fix Java compilation errors in this code:" < "$file")
+            # Get Copilot suggestions
+            gh copilot suggest --target shell < Main.java > suggested_fix.txt
+            
+            if [ -s suggested_fix.txt ]; then
+              cat suggested_fix.txt > Main.java
+              echo "Applied Copilot fix to Main.java"
+            else
+              echo "No fixes suggested by Copilot"
+              exit 1
+            fi
+          else
+            echo "Main.java compiles successfully"
+          fi
               
               if [ ! -z "$FIXED_CODE" ]; then
                 echo "$FIXED_CODE" > "$file"
