@@ -77,11 +77,11 @@ jobs:
       - name: Check Directory and Compilation
         run: |
           cd workspace
-          # Create src/main directory if it doesn't exist
-          mkdir -p src/main
+          # Create src directory if it doesn't exist
+          mkdir -p src
           
-          # Change to src/main directory
-          cd src/main
+          # Change to src directory
+          cd src
           
           # Debug information
           echo "Current directory: $(pwd)"
@@ -99,7 +99,7 @@ jobs:
       - name: Fix Code with Copilot
         if: failure()
         run: |
-          cd workspace/src/main
+          cd workspace/src
           
           # Use gh copilot to suggest fixes
           gh copilot suggest "Fix the Java compilation errors in Main.java" < /dev/null > suggested_fix.txt
@@ -120,7 +120,7 @@ jobs:
       - name: Verify Fixed Code
         if: failure()
         run: |
-          cd workspace/src/main
+          cd workspace/src
           
           # Attempt to compile the fixed code
           if ! javac Main.java; then
