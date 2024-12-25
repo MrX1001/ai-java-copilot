@@ -58,19 +58,29 @@ jobs:
           
           # Verify installation
           gh copilot --version
-      
+            
       - name: Fix Code with Copilot
         run: |
+          echo "Debugging Copilot Fix Step..."
+          echo "Current directory: $(pwd)"
+          ls -al src
+  
           # Use gh copilot to suggest fixes
           gh copilot suggest "Fix the Java compilation errors in src/Main.java" > suggested_fix.txt
           
+          # Debug the output
+          echo "Suggested fix contents:"
+          cat suggested_fix.txt || echo "No suggestions received."
+  
           # Apply the suggested fix if available
           if [ -s suggested_fix.txt ]; then
+            echo "Applying Copilot suggestion..."
             cat suggested_fix.txt > src/Main.java
           else
-            echo "No fixes suggested by Copilot"
+            echo "No fixes suggested by Copilot. Exiting."
             exit 1
           fi
+
       
       - name: Verify Fixed Code
         run: |
