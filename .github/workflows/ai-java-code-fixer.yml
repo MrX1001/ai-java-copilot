@@ -36,9 +36,11 @@ jobs:
       
       - name: Authenticate with GitHub CLI
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh auth login --with-token <<< "$GH_TOKEN"
+          echo "$GITHUB_TOKEN" > gh_token.txt
+          gh auth login --with-token < gh_token.txt
+          rm gh_token.txt
       
       - name: Install and Configure Copilot
         env:
