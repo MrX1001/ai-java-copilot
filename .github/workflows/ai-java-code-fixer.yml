@@ -99,9 +99,11 @@ jobs:
       - name: Fix Code with Copilot        
         run: |
           cd workspace/src
+
+          echo "Current directory: $(pwd)"
           
           # Use gh copilot to suggest fixes
-          gh copilot suggest "Fix the Java compilation errors in Main.java" < /dev/null > suggested_fix.txt
+          gh copilot suggest "Fix the Java compilation errors in workspace/src/Main.java" > suggested_fix.txt
           
           # Debug the output
           echo "Suggested fix contents:"
