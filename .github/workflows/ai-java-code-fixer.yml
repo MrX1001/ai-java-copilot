@@ -29,42 +29,44 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
       
-      - name: Install GitHub CLI
+      - name: Setup GitHub CLI and Copilot
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
+          # Install GitHub CLI
           type -p curl >/dev/null || (sudo apt update && sudo apt install curl -y)
           curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
           sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
           sudo apt update && sudo apt install gh -y
-
-      - name: Configure GitHub CLI and Copilot
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
-        run: |
-          # Temporarily unset GITHUB_TOKEN to avoid conflicts
-          unset GITHUB_TOKEN
           
-          # Configure GitHub CLI with GH_TOKEN
-          gh auth setup-git
+          # Login to GitHub CLI
+          echo "$GH_TOKEN" | gh auth login --with-token
           
-          # Install and configure Copilot
+          # Install Copilot extension
           gh extension install github/gh-copilot
           
-          # Create Copilot config directory
-          mkdir -p ~/.config/github-copilot
+          # Verify auth status
+          gh auth status
           
-          # Create Copilot credentials file
+      - name: Authenticate Copilot
+        env:
+          COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
+        run: |
+          # Create directory for Copilot credentials
+          mkdir -p ~/.config/github-copilot/
+          
+          # Write credentials file
           cat > ~/.config/github-copilot/hosts.json << EOF
           {
             "github.com": {
-              "user": "github-actions[bot]",
-              "oauth_token": "$COPILOT_TOKEN"
+              "oauth_token": "$COPILOT_TOKEN",
+              "user": "github-actions[bot]"
             }
           }
+EOF
           
-          # Verify authentication
-          gh auth status
+          # Verify Copilot auth
           gh copilot auth status
       
       - name: Check and Fix Java Code
@@ -84,10 +86,10 @@ jobs:
             echo "Getting Copilot suggestions..."
             
             # Get Copilot suggestions
-            gh copilot suggest --target shell < Main.java > suggested_fix.txt
+            SUGGESTION=$(cat Main.java | gh copilot suggest)
             
-            if [ -s suggested_fix.txt ]; then
-              cat suggested_fix.txt > Main.java
+            if [ ! -z "$SUGGESTION" ]; then
+              echo "$SUGGESTION" > Main.java
               echo "Applied Copilot fix to Main.java"
             else
               echo "No fixes suggested by Copilot"
@@ -96,21 +98,14 @@ jobs:
           else
             echo "Main.java compiles successfully"
           fi
-              
-              if [ ! -z "$FIXED_CODE" ]; then
-                echo "$FIXED_CODE" > "$file"
-                echo "Applied Copilot fix to $file"
-              else
-                echo "No fixes suggested by Copilot for $file"
-              fi
-            else
-              echo "$file compiles successfully"
-            fi
-          done
       
       - name: Verify Fixed Code
         run: |
-          find . -name "*.java" -type f -exec javac {} \;
+          cd src
+          if ! javac Main.java; then
+            echo "Verification failed: Code still doesn't compile"
+            exit 1
+          fi
       
       - name: Commit Changes
         run: |
