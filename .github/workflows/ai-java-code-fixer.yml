@@ -62,8 +62,6 @@ jobs:
               "user": "github-actions[bot]"
             }
           }
-EOF
-          
           # Verify auth status
           gh auth status
           gh copilot auth status
