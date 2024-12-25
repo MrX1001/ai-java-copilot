@@ -44,11 +44,16 @@ jobs:
       
       - name: Setup GitHub CLI and Copilot
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
         run: |
-          # Login to GitHub CLI
-          echo "$GH_TOKEN" | gh auth login --with-token
+          # Clear any existing token from environment
+          unset GH_TOKEN
+          
+          # Configure GitHub CLI without environment token
+          gh auth login --with-token << EOF
+          $GITHUB_TOKEN
+
           
           # Install Copilot extension
           gh extension install github/gh-copilot
@@ -62,6 +67,8 @@ jobs:
               "user": "github-actions[bot]"
             }
           }
+
+          
           # Verify auth status
           gh auth status
           gh copilot auth status
