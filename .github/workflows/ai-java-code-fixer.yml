@@ -96,8 +96,7 @@ jobs:
             # Continue to next step
           fi
       
-      - name: Fix Code with Copilot
-        if: failure()
+      - name: Fix Code with Copilot        
         run: |
           cd workspace/src
           
@@ -117,8 +116,7 @@ jobs:
             exit 1
           fi
     
-      - name: Verify Fixed Code
-        if: failure()
+      - name: Verify Fixed Code        
         run: |
           cd workspace/src
           
@@ -128,8 +126,7 @@ jobs:
             exit 1
           fi
       
-      - name: Commit Changes
-        if: success() && failure()
+      - name: Commit Changes       
         run: |
           cd workspace
           git add .
