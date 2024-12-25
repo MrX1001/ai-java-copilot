@@ -29,24 +29,32 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
       
-      - name: Install GitHub CLI and Copilot
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
+      - name: Install GitHub CLI
         run: |
           type -p curl >/dev/null || (sudo apt update && sudo apt install curl -y)
           curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
           sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
           sudo apt update && sudo apt install gh -y
+
+      - name: Configure GitHub CLI and Copilot
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
+        run: |
+          # Temporarily unset GITHUB_TOKEN to avoid conflicts
+          unset GITHUB_TOKEN
+          
+          # Configure GitHub CLI with GH_TOKEN
+          gh auth setup-git
           
           # Install and configure Copilot
           gh extension install github/gh-copilot
           mkdir -p ~/.config/gh-copilot
           echo "$COPILOT_TOKEN" > ~/.config/gh-copilot/token.json
           
-          # Authenticate GitHub CLI (using token)
-          echo "$GITHUB_TOKEN" | gh auth login --with-token
+          # Verify authentication
+          gh auth status
       
       - name: Check and Fix Java Code
         run: |
