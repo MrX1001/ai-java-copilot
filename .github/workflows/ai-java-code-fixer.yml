@@ -72,7 +72,7 @@ jobs:
           ls -al src
   
           # Use gh copilot to suggest fixes
-          echo | gh copilot suggest "Fix the Java compilation errors in src/Main.java" > suggested_fix.txt
+          echo | gh copilot suggest "Fix the Java compilation errors in Main.java" > suggested_fix.txt
   
           # Debug the output
           echo "Suggested fix contents:"
