@@ -14,7 +14,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
       
@@ -27,12 +27,12 @@ jobs:
           ls -la
       
       - name: Set up Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: '18'
       
       - name: Set up JDK 11
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           java-version: '11'
           distribution: 'temurin'
@@ -102,7 +102,7 @@ jobs:
           cd workspace/src
 
           echo "Current directory: $(pwd)"                  
-          gh copilot suggest "$(cat Main.java)" > suggested_fix.txt
+          gh copilot suggest -f Main.java > suggested_fix.txt
                     
           # Debug the output
           echo "Suggested fix contents:"
