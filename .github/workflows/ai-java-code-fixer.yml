@@ -62,7 +62,6 @@ jobs:
               "oauth_token": "$COPILOT_TOKEN"
             }
           }
-EOF
           
           # Verify authentication
           gh auth status
