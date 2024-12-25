@@ -104,7 +104,7 @@ jobs:
           echo "Current directory: $(pwd)"
           
           # Use gh copilot to suggest fixes
-          BUG=$(cat workspace/src/Main.java)
+          BUG=$(cat Main.java)
           gh copilot suggest "fix the following code : $BUG"
                     
           # Debug the output
