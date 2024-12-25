@@ -105,6 +105,7 @@ jobs:
           
           # Use gh copilot to suggest fixes
           BUG=$(cat Main.java)
+          echo "gh copilot suggest fix the following code : $BUG"
           gh copilot suggest "fix the following code : $BUG"
                     
           # Debug the output
