@@ -60,9 +60,8 @@ jobs:
           COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
         run: |
           # Install GitHub CLI Copilot extension
-          # gh extension install github/gh-copilot
-          npm install -g @github/gh-copilot
-          
+          gh extension install github/gh-copilot
+                    
           # Create Copilot config directory and token file
           mkdir -p ~/.config/gh-copilot
           echo "$COPILOT_TOKEN" > ~/.config/gh-copilot/token.json
@@ -105,9 +104,8 @@ jobs:
           echo "Current directory: $(pwd)"
           
           # Use gh copilot to suggest fixes
-          # gh copilot suggest "Fix the Java compilation errors in workspace/src/Main.java" > suggested_fix.txt          
-          npx @github/copilot-cli suggest "Fix the Java compilation errors in workspace/src/Main.java" > suggested_fix.txt
-          
+          gh copilot suggest "Fix the Java compilation errors in workspace/src/Main.java" > suggested_fix.txt          
+                    
           # Debug the output
           echo "Suggested fix contents:"
           cat suggested_fix.txt || echo "No suggestions received."
