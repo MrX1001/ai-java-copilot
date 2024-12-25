@@ -6,6 +6,6 @@ public class Main {
         System.out.println("The result is: " + result);
     }
     public static int add(int a, int b) {
-        return a + b
+        return a +  b
     }
 }
