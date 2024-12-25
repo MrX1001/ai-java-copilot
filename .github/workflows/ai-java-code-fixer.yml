@@ -59,6 +59,12 @@ jobs:
           # Verify installation
           gh copilot --version
             
+      - name: Validate GitHub CLI Authentication
+        run: gh auth status
+
+      - name: Update GitHub CLI and Extensions
+        run: gh extension upgrade --all
+
       - name: Fix Code with Copilot
         run: |
           echo "Debugging Copilot Fix Step..."
@@ -66,8 +72,8 @@ jobs:
           ls -al src
   
           # Use gh copilot to suggest fixes
-          gh copilot suggest "Fix the Java compilation errors in src/Main.java" > suggested_fix.txt
-          
+          echo | gh copilot suggest "Fix the Java compilation errors in src/Main.java" > suggested_fix.txt
+  
           # Debug the output
           echo "Suggested fix contents:"
           cat suggested_fix.txt || echo "No suggestions received."
@@ -80,8 +86,7 @@ jobs:
             echo "No fixes suggested by Copilot. Exiting."
             exit 1
           fi
-
-      
+    
       - name: Verify Fixed Code
         run: |
           # Attempt to compile the fixed code
