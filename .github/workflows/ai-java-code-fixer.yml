@@ -43,9 +43,7 @@ jobs:
           && sudo apt install gh -y
       
       - name: Configure GitHub CLI
-        run: |
-          #echo "${{ secrets.GH_TOKEN }}" | gh auth login --with-token
-          gh auth login --web -h github.com
+        run: gh auth login --web -h github.com
                     
       - name: Install and Configure Copilot        
         env: 
