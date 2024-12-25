@@ -67,11 +67,7 @@ jobs:
               
               # Get Copilot suggestions using the correct syntax
               echo "Getting Copilot suggestions for $file..."
-              FIXED_CODE=$(gh copilot suggest --target shell << EOL
-              # Fix Java compilation errors in this code:
-              $(cat "$file")
-              EOL
-              )
+              FIXED_CODE=$(gh copilot suggest --target shell --comment "Fix Java compilation errors in this code:" < "$file")
               
               if [ ! -z "$FIXED_CODE" ]; then
                 echo "$FIXED_CODE" > "$file"
