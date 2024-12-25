@@ -6,25 +6,38 @@ on:
   pull_request:
     branches:
       - main
-
 jobs:
   fix-java-issue:
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
-    
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      
+      - name: Clone Repository
+        run: |
+          REPO_URL="https://github.com/${GITHUB_REPOSITORY}.git"
+          git clone $REPO_URL workspace
+          cd workspace
+          echo "Current directory after clone: $(pwd)"
+          ls -la
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'
       
       - name: Set up JDK 11
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v2
         with:
           java-version: '11'
           distribution: 'temurin'
       
-      - name: Configure Git
+      - name: Configure Git credentials
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
@@ -32,93 +45,91 @@ jobs:
       - name: Install GitHub CLI
         run: |
           type -p curl >/dev/null || (sudo apt update && sudo apt install curl -y)
-          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-          sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
-          echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-          sudo apt update && sudo apt install gh -y
-
-      - name: Configure GitHub CLI and Copilot
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+          && sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+          && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+          && sudo apt update \
+          && sudo apt install gh -y
+      
+      - name: Configure GitHub CLI
+        run: gh auth login --web -h github.com
+                    
+      - name: Install and Configure Copilot        
+        env: 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
         run: |
-          # Temporarily unset GITHUB_TOKEN to avoid conflicts
-          unset GITHUB_TOKEN
-          
-          # Configure GitHub CLI with GH_TOKEN
-          gh auth setup-git
-          
-          # Install and configure Copilot
+          # Install GitHub CLI Copilot extension
           gh extension install github/gh-copilot
+                    
+          # Create Copilot config directory and token file
+          mkdir -p ~/.config/gh-copilot
+          echo "$COPILOT_TOKEN" > ~/.config/gh-copilot/token.json
           
-          # Create Copilot config directory
-          mkdir -p ~/.config/github-copilot
-          
-          # Create Copilot credentials file
-          cat > ~/.config/github-copilot/hosts.json << EOF
-          {
-            "github.com": {
-              "user": "github-actions[bot]",
-              "oauth_token": "$COPILOT_TOKEN"
-            }
-          }
-          
-          # Verify authentication
-          gh auth status
-          gh copilot auth status
+          # Verify installation
+          gh copilot --version
+            
+      - name: Validate GitHub CLI Authentication
+        run: gh auth status
       
-      - name: Check and Fix Java Code
+      - name: Update GitHub CLI and Extensions
+        run: gh extension upgrade --all
+      
+      - name: Check Directory and Compilation
         run: |
+          cd workspace
           # Create src directory if it doesn't exist
           mkdir -p src
+          
+          # Change to src directory
           cd src
           
-          if [ ! -f "Main.java" ]; then
-            echo "Main.java not found in src directory"
+          # Debug information
+          echo "Current directory: $(pwd)"
+          ls -la
+          
+          # Try to compile the code first
+          if javac Main.java; then
+            echo "Compilation successful. No fixes needed."
+            exit 0
+          else
+            echo "Compilation failed. Will attempt to fix with Copilot."
+            # Continue to next step
+          fi
+      
+      - name: Fix Code with Copilot        
+        run: |
+          cd workspace/src
+
+          echo "Current directory: $(pwd)"                  
+          gh copilot suggest "$(cat Main.java)" > suggested_fix.txt
+                    
+          # Debug the output
+          echo "Suggested fix contents:"
+          cat suggested_fix.txt || echo "No suggestions received."
+          
+          # Apply the suggested fix if available
+          if [ -s suggested_fix.txt ]; then
+          echo "Applying Copilot suggestion..."
+          cp suggested_fix.txt Main.java
+          else
+          echo "No fixes suggested by Copilot. Exiting."
+          exit 1
+          fi
+    
+      - name: Verify Fixed Code        
+        run: |
+          cd workspace/src
+          
+          # Attempt to compile the fixed code
+          if ! javac Main.java; then
+            echo "Compilation failed after Copilot fix"
             exit 1
           fi
-          
-          echo "Checking Main.java..."
-          if ! javac Main.java 2>/dev/null; then
-            echo "Compilation failed. Attempting to fix..."
-            echo "Getting Copilot suggestions..."
-            
-            # Get Copilot suggestions
-            gh copilot suggest --target shell < Main.java > suggested_fix.txt
-            
-            if [ -s suggested_fix.txt ]; then
-              cat suggested_fix.txt > Main.java
-              echo "Applied Copilot fix to Main.java"
-            else
-              echo "No fixes suggested by Copilot"
-              exit 1
-            fi
-          else
-            echo "Main.java compiles successfully"
-          fi
-              
-              if [ ! -z "$FIXED_CODE" ]; then
-                echo "$FIXED_CODE" > "$file"
-                echo "Applied Copilot fix to $file"
-              else
-                echo "No fixes suggested by Copilot for $file"
-              fi
-            else
-              echo "$file compiles successfully"
-            fi
-          done
       
-      - name: Verify Fixed Code
+      - name: Commit Changes       
         run: |
-          find . -name "*.java" -type f -exec javac {} \;
-      
-      - name: Commit Changes
-        run: |
-          if git diff --quiet; then
-            echo "No changes to commit"
-            exit 0
-          fi
-          
+          cd workspace
           git add .
           git commit -m "Fix Java compilation issues using GitHub Copilot"
-          git push origin ${GITHUB_REF#refs/heads/}
+          git push origin main
