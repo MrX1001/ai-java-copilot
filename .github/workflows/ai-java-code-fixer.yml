@@ -67,21 +67,25 @@ jobs:
 
       - name: Fix Code with Copilot
         run: |
-          echo "Debugging Copilot Fix Step..."
+          # Create src directory if it doesn't exist
+          mkdir -p src
+          
+          # Debug information
           echo "Current directory: $(pwd)"
-          ls -al src
-  
+          ls -la src/
+          
           # Use gh copilot to suggest fixes
-          echo | gh copilot suggest "Fix the Java compilation errors in Main.java" > suggested_fix.txt
-  
+          # Add proper input to prevent EOF error
+          gh copilot suggest "Fix the Java compilation errors in Main.java" < /dev/null > suggested_fix.txt
+          
           # Debug the output
           echo "Suggested fix contents:"
           cat suggested_fix.txt || echo "No suggestions received."
-  
+          
           # Apply the suggested fix if available
           if [ -s suggested_fix.txt ]; then
             echo "Applying Copilot suggestion..."
-            cat suggested_fix.txt > src/Main.java
+            cp suggested_fix.txt src/Main.java
           else
             echo "No fixes suggested by Copilot. Exiting."
             exit 1
