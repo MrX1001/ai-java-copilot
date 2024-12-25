@@ -50,11 +50,23 @@ jobs:
           
           # Install and configure Copilot
           gh extension install github/gh-copilot
-          mkdir -p ~/.config/gh-copilot
-          echo "$COPILOT_TOKEN" > ~/.config/gh-copilot/token.json
+          
+          # Create Copilot config directory
+          mkdir -p ~/.config/github-copilot
+          
+          # Create Copilot credentials file
+          cat > ~/.config/github-copilot/hosts.json << EOF
+          {
+            "github.com": {
+              "user": "github-actions[bot]",
+              "oauth_token": "$COPILOT_TOKEN"
+            }
+          }
+EOF
           
           # Verify authentication
           gh auth status
+          gh copilot auth status
       
       - name: Check and Fix Java Code
         run: |
