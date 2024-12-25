@@ -24,13 +24,15 @@ jobs:
       - name: Compile Main
         id: compile
         continue-on-error: true
-        run: javac src/Main.java
+        run: |
+          javac src/Main.java
+          echo "Compile result: $?"
         
       - name: Copilot Fix
         if: steps.compile.outcome == 'failure'
         uses: github/copilot-preview-action@v1
         with:
-          github_token: ${{ secrets.GH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           copilot_token: ${{ secrets.COPILOT_TOKEN }}
           file_path: 'src/Main.java'
           fix_compilation_errors: true
