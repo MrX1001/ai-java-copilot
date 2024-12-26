@@ -1,108 +1,64 @@
-name: Fix Java Compilation Issues with GitHub Copilot
+name: Java Compilation Check and Fix
+
 on:
   push:
-    branches:
-      - main
+    paths:
+      - 'src/Main.java'
   pull_request:
-    branches:
-      - main
+    paths:
+      - 'src/Main.java'
+
 jobs:
-  fix-java-issue:
+  compile-and-fix:
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Set up Java
-        uses: actions/setup-java@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up JDK
+        uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
-      
-      - name: Configure Git
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-      
-      - name: Install and Configure GitHub CLI
-        run: |
-          type -p curl >/dev/null || (sudo apt update && sudo apt install curl -y)
-          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
-          && sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
-          && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-          && sudo apt update \
-          && sudo apt install gh -y
-      
-      - name: Setup GitHub CLI Authentication
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "$GH_TOKEN" | gh auth login --with-token
-          gh auth status
-      
-      - name: Install GitHub Copilot CLI
-        run: |
-          gh extension install github/gh-copilot
-          mkdir -p ~/.config/gh-copilot
-          echo "${{ secrets.COPILOT_TOKEN }}" > ~/.config/gh-copilot/token.json
-      
-      - name: Check Initial Compilation
+
+      - name: Attempt to compile
         id: compile
         continue-on-error: true
         run: |
-          mkdir -p src
-          if [ -f "Main.java" ]; then
-            mv Main.java src/
-          fi
-          cd src
-          if javac Main.java; then
-            echo "compilation=success" >> $GITHUB_OUTPUT
-          else
-            echo "compilation=failed" >> $GITHUB_OUTPUT
-          fi
+          javac src/Main.java
+          echo "compile_exit_code=$?" >> $GITHUB_ENV
 
-      - name: Fix with Copilot
-        if: steps.compile.outputs.compilation == 'failed'
+      - name: Get compilation error
+        if: env.compile_exit_code != '0'
+        id: get-error
         run: |
-          cd src
-          # Use gh copilot suggest to get fixes for Main.java
-          gh copilot suggest -f Main.java > copilot_suggestions.txt
-          
-          # Apply the first suggestion
-          if [ -s copilot_suggestions.txt ]; then
-            cp Main.java Main.java.backup
-            cat copilot_suggestions.txt > Main.java
-          fi
-      
-      - name: Verify Fixed Code
-        if: steps.compile.outputs.compilation == 'failed'
-        id: verify
-        continue-on-error: true
+          javac src/Main.java 2> compilation_error.txt
+          echo "ERROR_MSG=$(cat compilation_error.txt)" >> $GITHUB_ENV
+
+      - name: Fix with GitHub Copilot
+        if: env.compile_exit_code != '0'
+        uses: github/copilot-suggestion-action@v0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: src/Main.java
+          prompt: |
+            Fix the following Java compilation error:
+            ${{ env.ERROR_MSG }}
+
+      - name: Create fix branch
+        if: env.compile_exit_code != '0'
         run: |
-          cd src
-          if javac Main.java; then
-            echo "fix_successful=true" >> $GITHUB_OUTPUT
-          else
-            echo "fix_successful=false" >> $GITHUB_OUTPUT
-            # Restore backup if fix failed
-            cp Main.java.backup Main.java
-          fi
-      
-      - name: Create Pull Request
-        if: steps.compile.outputs.compilation == 'failed' && steps.verify.outputs.fix_successful == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git checkout -b fix-java-compilation
+          git checkout -b fix/java-compilation-$(date +%Y%m%d_%H%M%S)
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
           git add src/Main.java
-          git commit -m "fix: Auto-fix Java compilation issues"
-          git push origin fix-java-compilation
-          
-          gh pr create \
-            --title "🔧 Fix Java Compilation Issues" \
-            --body "This PR contains automatic fixes for compilation errors in Main.java using GitHub Copilot suggestions." \
-            --base main \
-            --head fix-java-compilation
+          git commit -m "fix: Resolve Java compilation issues"
+          git push origin fix/java-compilation-$(date +%Y%m%d_%H%M%S)
+
+      - name: Verify fix
+        if: env.compile_exit_code != '0'
+        run: javac src/Main.java
