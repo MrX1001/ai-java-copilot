@@ -1,5 +1,4 @@
-name: Java Main File Check
-
+name: Fix Java Compilation Issues with GitHub Copilot
 on:
   push:
     branches:
@@ -7,32 +6,88 @@ on:
   pull_request:
     branches:
       - main
-
-
 jobs:
-  check-and-fix:
+  fix-java-issue:
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
-
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v2
         with:
           fetch-depth: 0
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      
+      - name: Clone Repository
+        run: |
+          REPO_URL="https://github.com/${GITHUB_REPOSITORY}.git"
+          git clone $REPO_URL workspace
+          cd workspace
+          echo "Current directory after clone: $(pwd)"
+          ls -la
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
         with:
-          java-version: '17'
+          node-version: '18'
+      
+      - name: Set up JDK 11
+        uses: actions/setup-java@v2
+        with:
+          java-version: '11'
           distribution: 'temurin'
-
+      
       - name: Configure Git credentials
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-
+      
+      - name: Install GitHub CLI
+        run: |
+          type -p curl >/dev/null || (sudo apt update && sudo apt install curl -y)
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+          && sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+          && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+          && sudo apt update \
+          && sudo apt install gh -y
+      
+      - name: Configure GitHub CLI
+        run: gh auth login --web -h github.com
+                    
+      - name: Install and Configure Copilot        
+        env: 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COPILOT_TOKEN: ${{ secrets.COPILOT_TOKEN }}
+        run: |
+          # Install GitHub CLI Copilot extension
+          gh extension install github/gh-copilot
+                    
+          # Create Copilot config directory and token file
+          mkdir -p ~/.config/gh-copilot
+          echo "$COPILOT_TOKEN" > ~/.config/gh-copilot/token.json
+          
+          # Verify installation
+          gh copilot --version
+            
+      - name: Validate GitHub CLI Authentication
+        run: gh auth status
+      
+      - name: Update GitHub CLI and Extensions
+        run: gh extension upgrade --all
+      
+      - name: Check Directory and Compilation
+        run: |
+          cd workspace
+          # Create src directory if it doesn't exist
+          mkdir -p src
+          
+          # Change to src directory
+          cd src
+          
+          # Debug information
+          echo "Current directory: $(pwd)"
+          ls -la
+          
       - name: Compile Main
         id: compile
         continue-on-error: true
@@ -41,6 +96,7 @@ jobs:
           javac Main.java
           echo "Compile result: $?"
 
+      
       - name: Copilot Fix
         if: steps.compile.outcome == 'failure'
         uses: github/copilot-preview-action@v1
@@ -50,10 +106,20 @@ jobs:
           file_path: 'src/Main.java'
           fix_compilation_errors: true
 
-      - name: Create Fix PR
-        if: steps.compile.outcome == 'failure'
-        uses: peter-evans/create-pull-request@v5
-        with:
-          commit-message: 'fix: Main.java compilation fixes'
-          title: 'Fix Main.java'
-          branch: fix-main-java
+    
+      - name: Verify Fixed Code        
+        run: |
+          cd workspace/src
+          
+          # Attempt to compile the fixed code
+          if ! javac Main.java; then
+            echo "Compilation failed after Copilot fix"
+            exit 1
+          fi
+      
+      - name: Commit Changes       
+        run: |
+          cd workspace
+          git add .
+          git commit -m "Fix Java compilation issues using GitHub Copilot"
+          git push origin main
